@@ -5,7 +5,7 @@ import { useSocketContext } from '../context/WebSocketContext';
 interface WSProps {
   onNewUser: () => void;
   onOffer: (offer: RTCSessionDescriptionInit) => void;
-  onAnswer: (answer: RTCLocalSessionDescriptionInit) => void;
+  onAnswer: (answer: RTCSessionDescriptionInit) => void;
   onIceCandidate: (candidate: RTCIceCandidateInit) => void;
 }
 
@@ -64,7 +64,7 @@ export const useSocket = ({
           break;
 
         case 'ice-candidate':
-          // onIceCandidate();
+          onIceCandidate(message.candidate);
           break;
 
         case 'new-user':

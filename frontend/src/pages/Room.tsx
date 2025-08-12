@@ -37,6 +37,12 @@ function Room() {
     const initialize = async () => {
       webRTC.initializePeerConnection();
       webRTC.getUserMedia();
+      registerWebRTCHandlers({
+        onNewUser: webRTC.createOffer,
+        onOffer: webRTC.handleOffer,
+        onAnswer: webRTC.handleAnswer,
+        onIceCandidate: webRTC.handleIceCandidate,
+      });
     };
     initialize();
 
