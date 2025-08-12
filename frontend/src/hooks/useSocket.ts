@@ -1,27 +1,36 @@
 import { useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSocketContext } from '../context/WebSocketContext';
 
-type FormProps = {
-  username?: string;
-  roomId?: string;
-};
+interface WSProps {
+  onNewUser: () => void;
+  onOffer: (offer: RTCSessionDescriptionInit) => void;
+  onAnswer: (answer: RTCLocalSessionDescriptionInit) => void;
+  onIceCandidate: (candidate: RTCIceCandidateInit) => void;
+}
 
-export const useSocket = ({ username, roomId }: FormProps = {}) => {
-  const wsRef = useRef<WebSocket | null>(null);
+export const useSocket = ({
+  onNewUser,
+  onOffer,
+  onAnswer,
+  onIceCandidate,
+}: WSProps) => {
+  // const socketRef = useRef<WebSocket | null>(null);
+  const socketRef = useSocketContext();
   const navigate = useNavigate();
 
-  const connectToWS = () => {
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+  const initializeWebSocket = (username: string, roomId: string) => {
+    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
       return;
     }
 
     const ws = new WebSocket('ws://localhost:8080');
-    wsRef.current = ws;
+    socketRef.current = ws;
 
     ws.onopen = () => {
       ws.send(
         JSON.stringify({
-          type: 'join',
+          type: 'join-room',
           payload: {
             username,
             roomId,
@@ -30,14 +39,40 @@ export const useSocket = ({ username, roomId }: FormProps = {}) => {
       );
     };
 
-    ws.onmessage = (data) => {
-      const parsedData = JSON.parse(data.data);
+    ws.onmessage = async (event) => {
+      const message = JSON.parse(event.data);
+      console.log('Received message:', message);
 
-      if (parsedData.type == 'room-joined') {
-        navigate(`/room/${parsedData.payload.roomId}`);
+      switch (message.type) {
+        case 'room-joined':
+          navigate(`/room/${message.payload.roomId}`, {
+            state: {
+              room: message.payload.roomId,
+              username: message.payload.username,
+            },
+          });
+          break;
+        case 'user-left':
+          navigate('/');
+          break;
+        case 'offer':
+          onOffer(message.payload.offer);
+          break;
+
+        case 'answer':
+          onAnswer(message.payload.offer);
+          break;
+
+        case 'ice-candidate':
+          // onIceCandidate();
+          break;
+
+        case 'new-user':
+          onNewUser();
+          break;
       }
     };
   };
 
-  return { wsRef, connectToWS };
+  return { initializeWebSocket };
 };

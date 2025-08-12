@@ -1,12 +1,20 @@
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
+import { useSocket } from '../hooks/useSocket';
 
 function Lobby() {
   const [username, setUsername] = useState('');
   const [roomId, setRoomId] = useState('');
 
+  const { initializeWebSocket } = useSocket();
+
   const generateRoomId = () => {
     const randomId = Math.random().toString(36).substring(2, 8).toUpperCase();
     setRoomId(randomId);
+  };
+
+  const handleJoin = (e: FormEvent) => {
+    e.preventDefault();
+    initializeWebSocket(username, roomId);
   };
 
   return (
@@ -66,6 +74,7 @@ function Lobby() {
             {/* Join Button */}
             <button
               type="submit"
+              onClick={handleJoin}
               disabled={!username.trim() || !roomId.trim()}
               className="w-full bg-blue-600 disabled:bg-gray-500 text-white font-semibold py-3 px-6 rounded-xl hover:shadow-xl transform hover:scale-[1.02] disabled:transform-none disabled:cursor-not-allowed transition-all duration-200 flex items-center justify-center space-x-2"
             >

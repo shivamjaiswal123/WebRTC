@@ -14,45 +14,116 @@ wss.on('connection', (ws: WebSocket) => {
   ws.on('message', (data) => {
     const parsedData = JSON.parse(data.toString());
 
-    if (parsedData.type == 'join') {
-      if (!rooms.has(parsedData.payload.roomId)) {
-        // create a entry in map with key as roomId and value with empty set
-        rooms.set(parsedData.payload.roomId, new Set());
-      }
+    switch (parsedData.type) {
+      case 'join-room':
+        handleJoinRoom(ws, parsedData.payload);
+        break;
+      case 'leave-room':
+        handleLeaveRoom(ws, parsedData.payload);
+        break;
 
-      const roomSize = rooms.get(parsedData.payload.roomId)?.size;
-      if (roomSize == 2) {
-        ws.close();
-        return;
-      }
-
-      rooms.get(parsedData.payload.roomId)?.add(ws);
-
-      // inform already existing user that new user joined
-      const userSockets = rooms.get(parsedData.payload.roomId);
-      userSockets?.forEach((userSocket) => {
-        if (userSocket !== ws && userSocket.readyState == WebSocket.OPEN) {
-          userSocket.send(
-            JSON.stringify({
-              type: 'new-user',
-              payload: {
-                username: parsedData.payload.username,
-              },
-            })
-          );
-        }
-      });
-
-      ws.send(
-        JSON.stringify({
-          type: 'room-joined',
-          payload: {
-            roomId: parsedData.payload.roomId,
-          },
-        })
-      );
-    } else if (parsedData.type == 'offer') {
-      console.log(parsedData.payload);
+      case 'offer':
+      case 'answer':
+      case 'ice-candidate':
+        handelSignalling(ws, parsedData.payload);
+        break;
     }
   });
 });
+
+function handleJoinRoom(ws: WebSocket, payload: any) {
+  const { roomId, username } = payload;
+
+  // Create new room if does not exist
+  if (!rooms.has(roomId)) {
+    // create a entry in map with key as roomId and value with empty set
+    rooms.set(roomId, new Set());
+  }
+
+  const roomSize = rooms.get(roomId)?.size;
+  if (roomSize == 2) {
+    ws.send(
+      JSON.stringify({
+        type: 'room-full',
+        payload: {
+          message: 'Room is already taken...',
+        },
+      })
+    );
+    ws.close();
+    return;
+  }
+
+  rooms.get(roomId)?.add(ws);
+
+  // inform already existing user that new user joined
+  const userSockets = rooms.get(roomId);
+  userSockets?.forEach((userSocket) => {
+    if (userSocket !== ws && userSocket.readyState == WebSocket.OPEN) {
+      userSocket.send(
+        JSON.stringify({
+          type: 'new-user',
+          payload: {
+            roomId,
+            username,
+          },
+        })
+      );
+    }
+  });
+
+  ws.send(
+    JSON.stringify({
+      type: 'room-joined',
+      payload: {
+        roomId,
+        username,
+      },
+    })
+  );
+}
+
+function handleLeaveRoom(ws: WebSocket, payload: any) {
+  const { roomId } = payload;
+
+  const room = rooms.get(roomId);
+
+  if (!room) return; // room not found
+
+  room.delete(ws);
+
+  // delete room if its empty
+  if (room.size == 0) {
+    rooms.delete(roomId);
+    return;
+  }
+
+  // single user left
+  const [remainingUser] = room;
+  remainingUser.send(
+    JSON.stringify({
+      type: 'user-left',
+      payload: {
+        roomId,
+      },
+    })
+  );
+}
+
+function handelSignalling(ws: WebSocket, payload: any) {
+  const { roomId } = payload;
+
+  if (!rooms.has(roomId)) return;
+
+  const room = rooms.get(roomId);
+
+  // forward signallinf data to other user
+  if (room) {
+    for (const socket of room) {
+      if (socket !== ws) {
+        socket.send(JSON.stringify(payload));
+        break;
+      }
+    }
+  }
+}

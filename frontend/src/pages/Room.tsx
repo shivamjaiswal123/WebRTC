@@ -1,6 +1,8 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Copy, Check } from 'lucide-react';
-import { useParams } from 'react-router-dom';
+import { useLocation, useParams } from 'react-router-dom';
+import { useWebRTC } from '../hooks/useWebRTC';
+import { useSocket } from '../hooks/useSocket';
 
 function Room() {
   const [copied, setCopied] = useState(false);
@@ -8,6 +10,16 @@ function Room() {
 
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
+  const { state } = useLocation();
+  const { room, username } = state;
+
+  const webRTC = useWebRTC({ room, username, localVideoRef, remoteVideoRef });
+  const webSocket = useSocket({
+    onNewUser: webRTC.createOffer,
+    onOffer: webRTC.handleOffer,
+    onAnswer: webRTC.handleAnswer,
+    onIceCandidate: webRTC.handleIceCandidate,
+  });
 
   const copyRoomId = async () => {
     try {
@@ -20,6 +32,20 @@ function Room() {
       console.error('Failed to copy room ID');
     }
   };
+
+  useEffect(() => {
+    const initialize = async () => {
+      webRTC.initializePeerConnection();
+      webRTC.getUserMedia();
+    };
+    initialize();
+
+    // Cleanup on unmount
+    return () => {
+      // webRTC.cleanup();
+      // webSocket.leaveRoom();
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-8">
