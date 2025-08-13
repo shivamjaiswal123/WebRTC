@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useCallback, useRef } from 'react';
 import { useSocketContext } from '../context/WebSocketContext';
 
 interface UseWebRTCProps {
@@ -17,8 +17,11 @@ export const useWebRTC = ({
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const socketRef = useSocketContext();
 
+  const localStreamRef = useRef<MediaStream | null>(null);
+
   // Initialize peer connection
-  const initializePeerConnection = () => {
+  const initializePeerConnection = useCallback(() => {
+    console.log('Inside initializePeerConnection ...............');
     const configuration = {
       iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
@@ -27,6 +30,7 @@ export const useWebRTC = ({
     };
 
     peerConnectionRef.current = new RTCPeerConnection(configuration);
+    console.log('New peer connection created ...............');
 
     peerConnectionRef.current.ontrack = (event) => {
       console.log('Received remote stream: ', event);
@@ -40,45 +44,56 @@ export const useWebRTC = ({
         socketRef.current.send(
           JSON.stringify({
             type: 'ice-candidate',
-            candidate: event.candidate,
-            roomId: room,
+            payload: {
+              candidate: event.candidate,
+              roomId: room,
+            },
           })
         );
       }
     };
-  };
+  }, [remoteVideoRef]);
 
-  const getUserMedia = async () => {
+  const getUserMedia = useCallback(async () => {
+    console.log('Inside getUserMedia ...............');
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: true,
         video: true,
       });
 
+      localStreamRef.current = stream;
+
       // Display on local video element
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
       }
 
-      // Add tracks to peer connection
       if (peerConnectionRef.current) {
         stream.getTracks().forEach((track) => {
+          console.log('Adding track: ', track.kind);
           peerConnectionRef.current?.addTrack(track, stream);
         });
       }
-
-      //   return stream;
     } catch (error) {
       console.error('Error creating offer:', error);
     }
-  };
+  }, [localVideoRef]);
 
   const createOffer = async () => {
+    console.log('Inside create offer ...............');
     if (!peerConnectionRef) return;
 
     try {
+      console.log('creating offer');
+
       const offer = await peerConnectionRef.current?.createOffer();
+      console.log('Offer created: ', offer);
+
       await peerConnectionRef.current?.setLocalDescription(offer);
+      console.log('Saved offer: ', peerConnectionRef.current);
+
       socketRef.current?.send(
         JSON.stringify({
           type: 'offer',
@@ -88,21 +103,25 @@ export const useWebRTC = ({
           },
         })
       );
+      console.log('Offer sent to ws');
     } catch (error) {
       console.error('Error creating offer:', error);
     }
   };
 
-  const handleOffer = async (
-    offer: RTCSessionDescriptionInit
-    // remoteUsername: string
-  ) => {
+  const handleOffer = async (offer: RTCSessionDescriptionInit) => {
+    console.log('Inside handle offer ...............');
     if (!peerConnectionRef.current) return;
 
     try {
       await peerConnectionRef.current.setRemoteDescription(offer);
+      console.log('Saved received offer: ', peerConnectionRef.current);
+
       const answer = await peerConnectionRef.current.createAnswer();
+      console.log('Answer created: ', answer);
+
       await peerConnectionRef.current.setLocalDescription(answer);
+      console.log('Saved answer: ', peerConnectionRef.current);
 
       socketRef.current?.send(
         JSON.stringify({
@@ -113,15 +132,19 @@ export const useWebRTC = ({
           },
         })
       );
+      console.log('Answer sent to ws');
     } catch (error) {
       console.error('Error handling offer:', error);
     }
   };
 
   const handleAnswer = async (answer: RTCSessionDescriptionInit) => {
+    console.log('Inside handlwAnswer ...............');
+
     if (!peerConnectionRef.current) return;
     try {
       await peerConnectionRef.current.setRemoteDescription(answer);
+      console.log('Set received answer to remote');
     } catch (error) {
       console.error('Error handling answer:', error);
     }
@@ -137,6 +160,18 @@ export const useWebRTC = ({
     }
   };
 
+  // Cleanup
+  const cleanup = () => {
+    // stop webcam / audio
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((track) => track.stop());
+    }
+    // close peer connection
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+    }
+  };
+
   return {
     initializePeerConnection,
     getUserMedia,
@@ -144,5 +179,6 @@ export const useWebRTC = ({
     handleOffer,
     handleAnswer,
     handleIceCandidate,
+    cleanup,
   };
 };

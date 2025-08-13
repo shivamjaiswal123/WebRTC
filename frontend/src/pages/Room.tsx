@@ -1,25 +1,22 @@
 import { useEffect, useRef, useState } from 'react';
 import { Copy, Check } from 'lucide-react';
-import { useLocation, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useWebRTC } from '../hooks/useWebRTC';
 import { useSocket } from '../hooks/useSocket';
 
 function Room() {
   const [copied, setCopied] = useState(false);
   const { roomId } = useParams();
+  const navigate = useNavigate();
 
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
-  const { state } = useLocation();
-  const { room, username } = state;
+  const {
+    state: { room, username },
+  } = useLocation();
 
   const webRTC = useWebRTC({ room, username, localVideoRef, remoteVideoRef });
-  const webSocket = useSocket({
-    onNewUser: webRTC.createOffer,
-    onOffer: webRTC.handleOffer,
-    onAnswer: webRTC.handleAnswer,
-    onIceCandidate: webRTC.handleIceCandidate,
-  });
+  const { registerHandlers, leaveRoom } = useSocket();
 
   const copyRoomId = async () => {
     try {
@@ -37,19 +34,21 @@ function Room() {
     const initialize = async () => {
       webRTC.initializePeerConnection();
       webRTC.getUserMedia();
-      registerWebRTCHandlers({
+
+      registerHandlers({
         onNewUser: webRTC.createOffer,
         onOffer: webRTC.handleOffer,
         onAnswer: webRTC.handleAnswer,
         onIceCandidate: webRTC.handleIceCandidate,
       });
     };
+
     initialize();
 
     // Cleanup on unmount
     return () => {
-      // webRTC.cleanup();
-      // webSocket.leaveRoom();
+      webRTC.cleanup();
+      leaveRoom(room);
     };
   }, []);
 
@@ -80,17 +79,22 @@ function Room() {
         {/* local video */}
         <video
           ref={localVideoRef}
-          className="w-xl h-80 rounded-md"
+          className="w-md h-80 rounded-md"
           autoPlay
           playsInline
         />
         {/* remote video */}
-        <video ref={remoteVideoRef} className="w-xl rounded-md" />
+        <video
+          ref={remoteVideoRef}
+          className="w-md h-80 rounded-md"
+          autoPlay
+          playsInline
+        />
       </div>
 
       {/* Controls */}
       <div className="flex items-center justify-center space-x-4 mt-12">
-        {/* <button onClick={createOffer}>Create Offer</button> */}
+        <button onClick={() => navigate('/')}>Leave</button>
 
         {/* Mute/Unmute */}
         {/* <button

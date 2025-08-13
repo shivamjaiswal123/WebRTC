@@ -25,7 +25,7 @@ wss.on('connection', (ws: WebSocket) => {
       case 'offer':
       case 'answer':
       case 'ice-candidate':
-        handelSignalling(ws, parsedData.payload);
+        handelSignalling(ws, parsedData);
         break;
     }
   });
@@ -110,8 +110,10 @@ function handleLeaveRoom(ws: WebSocket, payload: any) {
   );
 }
 
-function handelSignalling(ws: WebSocket, payload: any) {
-  const { roomId } = payload;
+function handelSignalling(ws: WebSocket, data: any) {
+  const {
+    payload: { roomId },
+  } = data;
 
   if (!rooms.has(roomId)) return;
 
@@ -121,7 +123,7 @@ function handelSignalling(ws: WebSocket, payload: any) {
   if (room) {
     for (const socket of room) {
       if (socket !== ws) {
-        socket.send(JSON.stringify(payload));
+        socket.send(JSON.stringify(data));
         break;
       }
     }
