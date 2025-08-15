@@ -67,7 +67,9 @@ export const useWebRTC = ({
 
       // Display on local video element
       if (localVideoRef.current) {
-        localVideoRef.current.srcObject = stream;
+        // Show only video locally
+        const videoOnlyStream = new MediaStream([stream.getVideoTracks()[0]]);
+        localVideoRef.current.srcObject = videoOnlyStream;
       }
 
       if (peerConnectionRef.current) {

@@ -5,8 +5,8 @@ import { useWebRTC } from '../hooks/useWebRTC';
 import { useSocket } from '../hooks/useSocket';
 
 function Room() {
-  const [isMuted, setIsMuted] = useState(false);
-  const [isCamOff, setIsCamOff] = useState(false);
+  const [isMuted] = useState(false);
+  const [isCamOff] = useState(false);
   const [copied, setCopied] = useState(false);
   const { roomId } = useParams();
   const navigate = useNavigate();
@@ -95,6 +95,7 @@ function Room() {
           ref={localVideoRef}
           className="w-md h-80 rounded-md"
           autoPlay
+          muted
           playsInline
         />
         {/* remote video */}
