@@ -164,11 +164,18 @@ export const useWebRTC = ({
   const cleanup = () => {
     // stop webcam / audio
     if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach((track) => track.stop());
+      localStreamRef.current.getTracks().forEach((track) => {
+        if (track.readyState == 'live') {
+          track.stop();
+        }
+      });
     }
     // close peer connection
     if (peerConnectionRef.current) {
-      peerConnectionRef.current.close();
+      try {
+        peerConnectionRef.current.close();
+      } catch (error) {}
+      peerConnectionRef.current = null;
     }
   };
 

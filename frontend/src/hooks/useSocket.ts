@@ -106,7 +106,7 @@ export const useSocket = () => {
     []
   );
 
-  const leaveRoom = (roomId: string) => {
+  const wsCleanup = (roomId: string) => {
     if (socketRef.current && socketRef.current.readyState == WebSocket.OPEN) {
       socketRef.current.send(
         JSON.stringify({
@@ -120,5 +120,5 @@ export const useSocket = () => {
     }
   };
 
-  return { initializeWebSocket, registerHandlers, leaveRoom };
+  return { initializeWebSocket, registerHandlers, wsCleanup };
 };

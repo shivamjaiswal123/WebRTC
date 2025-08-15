@@ -1,22 +1,30 @@
 import { useEffect, useRef, useState } from 'react';
-import { Copy, Check } from 'lucide-react';
+import { Copy, Check, MicOff, Mic, Video, VideoOff, Phone } from 'lucide-react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useWebRTC } from '../hooks/useWebRTC';
 import { useSocket } from '../hooks/useSocket';
 
 function Room() {
+  const [isMuted, setIsMuted] = useState(false);
+  const [isCamOff, setIsCamOff] = useState(false);
   const [copied, setCopied] = useState(false);
   const { roomId } = useParams();
   const navigate = useNavigate();
 
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null);
+
   const {
     state: { room, username },
   } = useLocation();
 
-  const webRTC = useWebRTC({ room, username, localVideoRef, remoteVideoRef });
-  const { registerHandlers, leaveRoom } = useSocket();
+  const webRTC = useWebRTC({
+    room,
+    username,
+    localVideoRef,
+    remoteVideoRef,
+  });
+  const { registerHandlers, wsCleanup } = useSocket();
 
   const copyRoomId = async () => {
     try {
@@ -48,9 +56,15 @@ function Room() {
     // Cleanup on unmount
     return () => {
       webRTC.cleanup();
-      leaveRoom(room);
+      wsCleanup(room);
     };
   }, []);
+
+  const leaveRoom = () => {
+    webRTC.cleanup();
+    wsCleanup(room);
+    navigate('/');
+  };
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-8">
@@ -94,11 +108,8 @@ function Room() {
 
       {/* Controls */}
       <div className="flex items-center justify-center space-x-4 mt-12">
-        <button onClick={() => navigate('/')}>Leave</button>
-
         {/* Mute/Unmute */}
-        {/* <button
-          onClick={() => setIsMuted(!isMuted)}
+        <button
           className={`p-3 rounded-full transition-colors ${
             isMuted
               ? 'bg-red-500 hover:bg-red-600'
@@ -111,33 +122,32 @@ function Room() {
           ) : (
             <Mic className="w-6 h-6 text-white" />
           )}
-        </button> */}
+        </button>
 
         {/* Video On/Off */}
-        {/* <button
-          onClick={createOffer}
+        <button
           className={`p-3 rounded-full transition-colors ${
-            isVideoOff
+            isCamOff
               ? 'bg-red-500 hover:bg-red-600'
               : 'bg-gray-700 hover:bg-gray-600'
           }`}
-          title={isVideoOff ? 'Turn video on' : 'Turn video off'}
+          title={isCamOff ? 'Turn video off' : 'Turn video on'}
         >
-          {isVideoOff ? (
+          {isCamOff ? (
             <Video className="w-6 h-6 text-white" />
           ) : (
             <VideoOff className="w-6 h-6 text-white" />
           )}
-        </button> */}
+        </button>
 
         {/* Leave Room */}
-        {/* <button
-          //   onClick={onLeaveRoom}
+        <button
+          onClick={leaveRoom}
           className="p-3 bg-red-500 hover:bg-red-600 rounded-full transition-colors"
           title="Leave room"
         >
           <Phone className="w-6 h-6 text-white rotate-[135deg]" />
-        </button> */}
+        </button>
       </div>
     </div>
   );
