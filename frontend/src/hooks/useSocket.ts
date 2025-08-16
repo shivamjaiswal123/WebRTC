@@ -7,6 +7,7 @@ interface WSProps {
   onOffer: (offer: RTCSessionDescriptionInit) => void;
   onAnswer: (answer: RTCSessionDescriptionInit) => void;
   onIceCandidate: (candidate: RTCIceCandidateInit) => void;
+  onUserLeft: () => void;
 }
 
 export const useSocket = () => {
@@ -69,7 +70,7 @@ export const useSocket = () => {
   };
 
   const registerHandlers = useCallback(
-    ({ onNewUser, onOffer, onAnswer, onIceCandidate }: WSProps) => {
+    ({ onNewUser, onOffer, onAnswer, onIceCandidate, onUserLeft }: WSProps) => {
       if (!socketRef.current) return;
 
       const prevOnMessage = socketRef.current.onmessage;
@@ -100,6 +101,10 @@ export const useSocket = () => {
               onNewUser();
             }, 3000);
             break;
+          case 'user-left': {
+            onUserLeft();
+            break;
+          }
         }
       };
     },

@@ -162,6 +162,13 @@ export const useWebRTC = ({
     }
   };
 
+  // when other user leave the room, stop remote peer video.
+  const stopRemoteStream = async () => {
+    if (remoteVideoRef.current) {
+      remoteVideoRef.current.srcObject = null;
+    }
+  };
+
   // Cleanup
   const cleanup = () => {
     // stop webcam / audio
@@ -189,5 +196,6 @@ export const useWebRTC = ({
     handleAnswer,
     handleIceCandidate,
     cleanup,
+    stopRemoteStream,
   };
 };

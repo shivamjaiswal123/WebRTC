@@ -48,6 +48,7 @@ function Room() {
         onOffer: webRTC.handleOffer,
         onAnswer: webRTC.handleAnswer,
         onIceCandidate: webRTC.handleIceCandidate,
+        onUserLeft: webRTC.stopRemoteStream,
       });
     };
 
