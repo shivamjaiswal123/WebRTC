@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react';
+import React, { useCallback, useRef } from 'react';
 import { useSocketContext } from '../context/WebSocketContext';
 
 interface UseWebRTCProps {
@@ -6,6 +6,7 @@ interface UseWebRTCProps {
   username: string;
   localVideoRef: React.RefObject<HTMLVideoElement | null>;
   remoteVideoRef: React.RefObject<HTMLVideoElement | null>;
+  setIsCamOff: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export const useWebRTC = ({
@@ -13,11 +14,13 @@ export const useWebRTC = ({
   username,
   localVideoRef,
   remoteVideoRef,
+  setIsCamOff,
 }: UseWebRTCProps) => {
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const socketRef = useSocketContext();
 
   const localStreamRef = useRef<MediaStream | null>(null);
+  const videoSenderRef = useRef<RTCRtpSender | null>(undefined);
 
   // Initialize peer connection
   const initializePeerConnection = useCallback(() => {
@@ -75,7 +78,11 @@ export const useWebRTC = ({
       if (peerConnectionRef.current) {
         stream.getTracks().forEach((track) => {
           console.log('Adding track: ', track.kind);
-          peerConnectionRef.current?.addTrack(track, stream);
+          const sender = peerConnectionRef.current?.addTrack(track, stream);
+
+          if (sender?.track?.kind == 'video') {
+            videoSenderRef.current = sender;
+          }
         });
       }
     } catch (error) {
@@ -169,6 +176,57 @@ export const useWebRTC = ({
     }
   };
 
+  const startWebCam = async () => {
+    // Get a new stream from the camera
+    const newStream = await navigator.mediaDevices.getUserMedia({
+      video: true,
+    });
+    const newVideoTrack = newStream.getVideoTracks()[0];
+
+    // Add the new track to the local stream ref
+    localStreamRef.current?.addTrack(newVideoTrack);
+
+    // Update the local video element with the new stream
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = newStream;
+    }
+    videoSenderRef.current?.replaceTrack(newVideoTrack);
+    setIsCamOff(false);
+  };
+
+  const stopWebCam = async (videoTrack: MediaStreamTrack) => {
+    // Find the video sender
+    const sender = peerConnectionRef.current
+      ?.getSenders()
+      .find((s) => s.track?.kind === 'video');
+
+    // Stop the track to release the camera and turn off the LED
+    videoTrack.stop();
+    // Explicitly remove the track from the local stream ref
+    localStreamRef.current?.removeTrack(videoTrack);
+    if (localVideoRef.current) {
+      // localVideoRef.current.srcObject = null;
+    }
+    // Inform the peer connection to stop sending this track
+    if (sender) {
+      await sender.replaceTrack(null);
+    }
+    setIsCamOff(true);
+  };
+
+  const toggleVideo = async () => {
+    //Find the current active video track
+    const videoTrack = localStreamRef.current
+      ?.getVideoTracks()
+      .find((track) => track.kind === 'video' && track.readyState === 'live');
+
+    if (videoTrack) {
+      stopWebCam(videoTrack);
+    } else {
+      startWebCam();
+    }
+  };
+
   // Cleanup
   const cleanup = () => {
     // stop webcam / audio
@@ -197,5 +255,6 @@ export const useWebRTC = ({
     handleIceCandidate,
     cleanup,
     stopRemoteStream,
+    toggleVideo,
   };
 };

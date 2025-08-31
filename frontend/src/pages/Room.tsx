@@ -6,7 +6,7 @@ import { useSocket } from '../hooks/useSocket';
 
 function Room() {
   const [isMuted] = useState(false);
-  const [isCamOff] = useState(false);
+  const [isCamOff, setIsCamOff] = useState(false);
   const [copied, setCopied] = useState(false);
   const { roomId } = useParams();
   const navigate = useNavigate();
@@ -23,6 +23,7 @@ function Room() {
     username,
     localVideoRef,
     remoteVideoRef,
+    setIsCamOff,
   });
   const { registerHandlers, wsCleanup } = useSocket();
 
@@ -94,7 +95,7 @@ function Room() {
         {/* local video */}
         <video
           ref={localVideoRef}
-          className="w-md h-80 rounded-md"
+          className="w-md h-80 rounded-md transform -scale-x-100"
           autoPlay
           muted
           playsInline
@@ -102,7 +103,7 @@ function Room() {
         {/* remote video */}
         <video
           ref={remoteVideoRef}
-          className="w-md h-80 rounded-md"
+          className="w-md h-80 rounded-md transform -scale-x-100"
           autoPlay
           playsInline
         />
@@ -128,17 +129,18 @@ function Room() {
 
         {/* Video On/Off */}
         <button
+          onClick={webRTC.toggleVideo}
           className={`p-3 rounded-full transition-colors ${
             isCamOff
-              ? 'bg-red-500 hover:bg-red-600'
-              : 'bg-gray-700 hover:bg-gray-600'
+              ? 'bg-gray-700 hover:bg-gray-600'
+              : 'bg-red-500 hover:bg-red-600'
           }`}
-          title={isCamOff ? 'Turn video off' : 'Turn video on'}
+          title={isCamOff ? 'Turn video on' : 'Turn video off'}
         >
           {isCamOff ? (
-            <Video className="w-6 h-6 text-white" />
-          ) : (
             <VideoOff className="w-6 h-6 text-white" />
+          ) : (
+            <Video className="w-6 h-6 text-white" />
           )}
         </button>
 
