@@ -5,7 +5,7 @@ import { useWebRTC } from '../hooks/useWebRTC';
 import { useSocket } from '../hooks/useSocket';
 
 function Room() {
-  const [isMuted] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
   const [isCamOff, setIsCamOff] = useState(false);
   const [copied, setCopied] = useState(false);
   const { roomId } = useParams();
@@ -24,6 +24,7 @@ function Room() {
     localVideoRef,
     remoteVideoRef,
     setIsCamOff,
+    setIsMuted,
   });
   const { registerHandlers, wsCleanup } = useSocket();
 
@@ -113,10 +114,11 @@ function Room() {
       <div className="flex items-center justify-center space-x-4 mt-12">
         {/* Mute/Unmute */}
         <button
+          onClick={webRTC.toggleAudio}
           className={`p-3 rounded-full transition-colors ${
             isMuted
-              ? 'bg-red-500 hover:bg-red-600'
-              : 'bg-gray-700 hover:bg-gray-600'
+              ? 'bg-gray-700 hover:bg-gray-600'
+              : 'bg-red-500 hover:bg-red-600'
           }`}
           title={isMuted ? 'Unmute' : 'Mute'}
         >

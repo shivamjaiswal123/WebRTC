@@ -7,14 +7,16 @@ interface UseWebRTCProps {
   localVideoRef: React.RefObject<HTMLVideoElement | null>;
   remoteVideoRef: React.RefObject<HTMLVideoElement | null>;
   setIsCamOff: React.Dispatch<React.SetStateAction<boolean>>;
+  setIsMuted: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 export const useWebRTC = ({
   room,
-  username,
+  // username,
   localVideoRef,
   remoteVideoRef,
   setIsCamOff,
+  setIsMuted,
 }: UseWebRTCProps) => {
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const socketRef = useSocketContext();
@@ -227,6 +229,18 @@ export const useWebRTC = ({
     }
   };
 
+  const toggleAudio = async () => {
+    const audioTrack = localStreamRef.current
+      ?.getAudioTracks()
+      .find((track) => track.kind === 'audio' && track.readyState === 'live');
+    console.log(audioTrack);
+
+    if (audioTrack) {
+      audioTrack.enabled = !audioTrack.enabled;
+      setIsMuted((prev) => !prev);
+    }
+  };
+
   // Cleanup
   const cleanup = () => {
     // stop webcam / audio
@@ -256,5 +270,6 @@ export const useWebRTC = ({
     cleanup,
     stopRemoteStream,
     toggleVideo,
+    toggleAudio,
   };
 };
